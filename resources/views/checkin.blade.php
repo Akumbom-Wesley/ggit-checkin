@@ -30,9 +30,13 @@
 
     <x-app-drawer />
 
+    {{-- ===== Two columns: list (left) + sidebar (right, desktop only) ===== --}}
     <div class="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+
+        {{-- ================= LEFT: check-in list ================= --}}
         <main class="min-w-0 lg:pb-10">
-            {{-- ===== What to do ===== --}}
+
+            {{-- what to do --}}
             <div class="pt-5">
                 <h1 class="text-xl font-semibold tracking-tight sm:text-2xl">Check in participants</h1>
                 <p class="mt-1 text-sm text-gray-500">
@@ -41,7 +45,7 @@
                 </p>
             </div>
 
-            {{-- ===== Search (sticks under the header) ===== --}}
+            {{-- search + filters + pagination (sticks under the header) --}}
             <div class="sticky top-[3.75rem] z-20 -mx-4 bg-gray-100/95 px-4 pb-3 pt-3 backdrop-blur">
                 <label for="search" class="sr-only">Search participants</label>
                 <div class="relative">
@@ -58,8 +62,9 @@
                     </button>
                 </div>
 
-                <div class="mt-3 flex items-center gap-2">
-                    <div class="inline-flex min-w-0 rounded-lg bg-white p-1 text-sm shadow-sm ring-1 ring-gray-200">
+                <div class="mt-3 flex flex-col gap-2 lg:flex-row lg:items-center">
+                    {{-- filters --}}
+                    <div class="inline-flex min-w-0 self-start rounded-lg bg-white p-1 text-sm shadow-sm ring-1 ring-gray-200">
                         <template x-for="f in [['all', 'All'], ['waiting', 'Not arrived'], ['in', 'Checked in']]" :key="f[0]">
                             <button type="button" @click="filter = f[0]"
                                     class="whitespace-nowrap rounded-md px-2.5 py-1.5 font-medium transition sm:px-3"
@@ -70,12 +75,43 @@
                             </button>
                         </template>
                     </div>
-                    <p class="ml-auto hidden text-xs text-gray-500 sm:block" x-show="q.trim()" x-cloak
-                       x-text="`${matches.length} match${matches.length === 1 ? '' : 'es'}`"></p>
+
+                    {{-- pagination: own row on phones/tablets, right of the filters on desktop --}}
+                    <div x-show="matches.length" x-cloak class="flex items-center gap-2 lg:ml-auto" aria-label="Pagination">
+                        <p class="whitespace-nowrap text-xs text-gray-500 sm:text-sm">
+                            <span class="font-medium tabular-nums text-ggit-ink" x-text="pageStart"></span>–<span class="font-medium tabular-nums text-ggit-ink" x-text="pageEnd"></span>
+                            of <span class="font-medium tabular-nums text-ggit-ink" x-text="matches.length"></span>
+                        </p>
+
+                        <div class="ml-auto flex items-center gap-1 lg:ml-2">
+                            <button type="button" @click="goToPage(currentPage - 1)" :disabled="currentPage === 1" aria-label="Previous page"
+                                    class="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-gray-700 ring-1 ring-gray-200 transition hover:ring-ggit-purple disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:ring-gray-200">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m15 19-7-7 7-7"/></svg>
+                            </button>
+                            <span class="min-w-12 text-center text-sm font-medium tabular-nums text-gray-600">
+                                <span x-text="currentPage"></span> / <span x-text="pageCount"></span>
+                            </span>
+                            <button type="button" @click="goToPage(currentPage + 1)" :disabled="currentPage === pageCount" aria-label="Next page"
+                                    class="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-gray-700 ring-1 ring-gray-200 transition hover:ring-ggit-purple disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:ring-gray-200">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m9 5 7 7-7 7"/></svg>
+                            </button>
+
+                            <label class="ml-1">
+                                <span class="sr-only">Results per page</span>
+                                <select x-model.number="perPage"
+                                        class="h-8 rounded-lg border border-gray-300 bg-white px-2 text-sm text-ggit-ink outline-none focus:border-ggit-purple focus:ring-2 focus:ring-ggit-purple/15">
+                                    <template x-for="n in perPageOptions" :key="n">
+                                        <option :value="n" x-text="`${n} / page`" :selected="n === perPage"></option>
+                                    </template>
+                                </select>
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
+            {{-- end sticky search area --}}
 
-            {{-- ===== Results ===== --}}
+            {{-- loading skeleton --}}
             <div x-show="loading && !people.length" class="space-y-2">
                 @for ($i = 0; $i < 6; $i++)
                     <div class="h-20 animate-pulse rounded-xl bg-white/70"></div>
@@ -86,6 +122,7 @@
                 No exact match. Showing similar spellings.
             </p>
 
+            {{-- results --}}
             <ul class="space-y-2" role="list">
                 <template x-for="(p, i) in results" :key="p.id">
                     <li :id="'row-' + p.id" @mouseenter="active = i"
@@ -130,58 +167,6 @@
                 </template>
             </ul>
 
-                        {{-- ===== Pagination ===== --}}
-            <nav x-show="matches.length" x-cloak aria-label="Pagination"
-                 class="mt-4 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
-
-                <p class="text-sm text-gray-500">
-                    Showing <span class="font-medium tabular-nums text-ggit-ink" x-text="pageStart"></span>–<span class="font-medium tabular-nums text-ggit-ink" x-text="pageEnd"></span>
-                    of <span class="font-medium tabular-nums text-ggit-ink" x-text="matches.length"></span>
-                </p>
-
-                <div x-show="pageCount > 1" class="flex items-center gap-1">
-                    <button type="button" @click="goToPage(currentPage - 1)" :disabled="currentPage === 1"
-                            class="flex h-9 items-center gap-1 rounded-lg bg-white px-3 text-sm font-medium text-gray-700 ring-1 ring-gray-200 transition hover:ring-ggit-purple disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:ring-gray-200">
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m15 19-7-7 7-7"/></svg>
-                        Prev
-                    </button>
-
-                    {{-- page numbers: tablet / desktop --}}
-                    <div class="hidden items-center gap-1 sm:flex">
-                        <template x-for="(n, idx) in pageNumbers()" :key="idx">
-                            <button type="button" x-text="n"
-                                    @click="n !== '…' && goToPage(n)" :disabled="n === '…'"
-                                    :aria-current="n === currentPage ? 'page' : null"
-                                    class="h-9 min-w-9 rounded-lg px-2 text-sm font-medium tabular-nums transition"
-                                    :class="n === currentPage
-                                        ? 'bg-ggit-purple text-white'
-                                        : (n === '…' ? 'cursor-default text-gray-400' : 'bg-white text-gray-700 ring-1 ring-gray-200 hover:ring-ggit-purple')"></button>
-                        </template>
-                    </div>
-
-                    {{-- compact counter: phones --}}
-                    <span class="px-3 text-sm font-medium tabular-nums text-gray-600 sm:hidden">
-                        <span x-text="currentPage"></span> / <span x-text="pageCount"></span>
-                    </span>
-
-                    <button type="button" @click="goToPage(currentPage + 1)" :disabled="currentPage === pageCount"
-                            class="flex h-9 items-center gap-1 rounded-lg bg-white px-3 text-sm font-medium text-gray-700 ring-1 ring-gray-200 transition hover:ring-ggit-purple disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:ring-gray-200">
-                        Next
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m9 5 7 7-7 7"/></svg>
-                    </button>
-                </div>
-
-                <label class="flex items-center gap-2 text-sm text-gray-500">
-                    Per page
-                    <select x-model.number="perPage"
-                            class="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm text-ggit-ink outline-none focus:border-ggit-purple focus:ring-2 focus:ring-ggit-purple/15">
-                        <template x-for="n in perPageOptions" :key="n">
-                            <option :value="n" x-text="n" :selected="n === perPage"></option>
-                        </template>
-                    </select>
-                </label>
-            </nav>
-
             {{-- no match → offer to add --}}
             <div x-show="!loading && q.trim() && !matches.length && people.length" x-cloak
                  class="rounded-xl border-2 border-dashed border-gray-300 bg-white p-8 text-center">
@@ -207,13 +192,14 @@
                x-text="filter === 'in' ? 'No one checked in yet.' : 'Everyone has arrived!'"></p>
         </main>
 
-        {{-- ===== Sidebar (desktop): scrolls on its own ===== --}}
+        {{-- ================= RIGHT: sidebar (desktop), scrolls on its own ================= --}}
         <aside class="hidden lg:block">
             <div class="sticky top-[3.75rem] max-h-[calc(100dvh-3.75rem)] overflow-y-auto pb-8 pr-1 pt-5">
                 @include('partials.side-panel')
             </div>
         </aside>
     </div>
+    {{-- end two columns --}}
 
     @include('partials.add-modal')
 
