@@ -9,6 +9,11 @@ export const ADD_CATEGORIES = [
     { key: 'registered', label: 'Registered (missing)' },
 ];
 
+const phoneKey = (phone) => {
+    const digits = (phone || '').replace(/\D/g, '');
+    return digits ? digits.slice(-9) : '';
+};
+
 export default function addParticipant() {
     return {
         addCats: ADD_CATEGORIES,
@@ -84,11 +89,89 @@ export default function addParticipant() {
             return Object.keys(e).length === 0;
         },
 
+        // ---------- duplicates ----------
+
+        /** Instant check against the list already on this device. */
+        findDuplicates(form) {
+            const key = phoneKey(form.phone);
+            const email = form.email.trim().toLowerCase();
+            const found = [];
+            for (const p of this.people) {
+                const matchedOn = [];
+                if (key && phoneKey(p.phone) === key) matchedOn.push('phone');
+                if (email && (p.email || '').toLowerCase() === email) matchedOn.push('email');
+                if (matchedOn.length) found.push({ id: p.id, matched_on: matchedOn });
+                if (found.length === 5) break;
+            }
+            return found;
+        },
+
+        /** Show the warning at the top of the form and mark the clashing fields. */
+        showDuplicates(list) {
+            this.add.matches = list;
+            const first = this.duplicateMatches()[0];
+            const who = first ? first.name : 'someone on the list';
+            if (list.some((m) => m.matched_on.includes('phone'))) this.add.errors.phone = `Already used by ${who}`;
+            if (list.some((m) => m.matched_on.includes('email'))) this.add.errors.email = `Already used by ${who}`;
+            this.$nextTick(() => this.$refs.addBody?.scrollTo({ top: 0, behavior: 'smooth' }));
+        },
+
+        dismissDuplicates() {
+            this.add.matches = [];
+            delete this.add.errors.phone;
+            delete this.add.errors.email;
+            this.$nextTick(() => document.getElementById('add-phone')?.focus());
+        },
+
+        /** Existing records (live, so their check-in status is current) + what matched. */
+        duplicateMatches() {
+            return this.add.matches
+                .map((m) => {
+                    const person = this.people[this.byId.get(m.id)];
+                    return person ? { ...person, matched_on: m.matched_on || [] } : null;
+                })
+                .filter(Boolean);
+        },
+
+        matchReason(m) {
+            const phone = m.matched_on.includes('phone');
+            const email = m.matched_on.includes('email');
+            if (phone && email) return 'Same phone number and email';
+            if (phone) return 'Same phone number';
+            if (email) return 'Same email address';
+            return 'Possible match';
+        },
+
+        checkInExisting(m) {
+            const p = this.people[this.byId.get(m.id)];
+            this.add.open = false;
+            if (!p) return;
+            if (p.in) {
+                this.toast('warn', `${p.name} is already checked in (${this.time(p.in)})`);
+                this.focusSearch();
+            } else {
+                this.checkIn(p);
+            }
+        },
+
+        // ---------- save ----------
+
         async saveAdd(force = false) {
             if (this.add.saving || !this.validateAdd()) return;
+            const f = this.add.form;
+
+            // 1. Instant check on this device
+            if (!force) {
+                const local = this.findDuplicates(f);
+                if (local.length) {
+                    this.showDuplicates(local);
+                    return;
+                }
+            }
+
+            // 2. Save (the server checks again, in case another desk just added them)
             this.add.saving = true;
             this.add.matches = [];
-            const f = this.add.form;
             const payload = { ...f, amount: f.amount === '' || f.amount === null ? null : Number(f.amount), force };
 
             try {
@@ -105,33 +188,20 @@ export default function addParticipant() {
                     this.toast('ok', (p.in ? `${p.name} added and checked in` : `${p.name} added`) + paid, p.in ? p.id : null);
                     this.focusSearch();
                 } else if (r.status === 409 && r.data.message === 'possible_duplicate') {
-                    this.apply(r.data.matches); // get their latest check-in status
-                    this.add.matches = r.data.matches.map((m) => m.id);
+                    this.apply(r.data.matches.map(({ matched_on, ...m }) => m)); // latest data for those people
+                    this.showDuplicates(r.data.matches.map((m) => ({ id: m.id, matched_on: m.matched_on || [] })));
                 } else if (r.status === 422) {
                     const e = {};
                     for (const [k, v] of Object.entries(r.data.errors || {})) e[k] = v[0];
                     this.add.errors = e;
+                    this.toast('error', 'Please fix the highlighted fields.');
                 } else {
-                    this.toast('error', r.data.message || 'Could not add this person.');
+                    this.toast('error', r.data.message || 'Could not add this person. Please try again.');
                 }
             } catch (e) {
                 this.toast('error', "Couldn't reach the server. Check the connection and try again.");
             } finally {
                 this.add.saving = false;
-            }
-        },
-
-        duplicateMatches() {
-            return this.add.matches.map((id) => this.people[this.byId.get(id)]).filter(Boolean);
-        },
-
-        checkInExisting(p) {
-            this.add.open = false;
-            if (p.in) {
-                this.toast('warn', `${p.name} is already checked in (${this.time(p.in)})`);
-                this.focusSearch();
-            } else {
-                this.checkIn(p);
             }
         },
     };

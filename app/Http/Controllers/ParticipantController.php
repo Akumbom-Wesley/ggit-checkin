@@ -82,18 +82,26 @@ class ParticipantController extends Controller
 
         $data['full_name'] = preg_replace('/\s+/', ' ', trim($data['full_name']));
 
-        // Warn before creating a likely duplicate (same phone or same email).
+        // Warn before creating a likely duplicate (same phone or same email), unless staff confirmed.
         if (! $request->boolean('force')) {
+            $phoneKey = Participant::phoneKey($data['phone']);
+            $email = mb_strtolower(trim($data['email']));
+
             $matches = Participant::query()
                 ->where(fn ($q) => $q
-                    ->where('phone_key', Participant::phoneKey($data['phone']))
-                    ->orWhere('email', mb_strtolower(trim($data['email']))))
+                    ->where('phone_key', $phoneKey)
+                    ->orWhere('email', $email))
                 ->limit(5)->get();
 
             if ($matches->isNotEmpty()) {
                 return response()->json([
                     'message' => 'possible_duplicate',
-                    'matches' => $matches->map->toClient(),
+                    'matches' => $matches->map(fn (Participant $m) => $m->toClient() + [
+                        'matched_on' => array_values(array_filter([
+                            $phoneKey && $m->phone_key === $phoneKey ? 'phone' : null,
+                            $m->email === $email ? 'email' : null,
+                        ])),
+                    ]),
                 ], 409);
             }
         }
