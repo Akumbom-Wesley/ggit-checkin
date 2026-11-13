@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SummaryController;
 
 Route::get('/login', [AuthController::class, 'show'])->name('login');
-Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:40,1');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware('pin')->group(function () {
