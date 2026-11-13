@@ -158,9 +158,14 @@
                                     <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m5 13 4 4L19 7"/></svg>
                                     Checked in <span class="tabular-nums" x-text="time(p.in)"></span>
                                 </span>
-                                <button type="button" @click="askUndo(p)" class="rounded px-1 text-xs"
-                                        :class="p._confirmUndo ? 'bg-red-50 font-medium text-red-600' : 'text-gray-400 underline-offset-2 hover:text-gray-700 hover:underline'"
-                                        x-text="p._confirmUndo ? 'Tap again to undo' : 'Undo'"></button>
+                                                                <button type="button" @click="askUndo(p)"
+                                        class="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-semibold transition active:scale-95"
+                                        :class="p._confirmUndo
+                                            ? 'border-red-600 bg-red-600 text-white shadow-sm'
+                                            : 'border-amber-300 bg-amber-50 text-amber-800 hover:border-amber-400 hover:bg-amber-100'">
+                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+                                    <span x-text="p._confirmUndo ? 'Tap again to undo' : 'Undo'"></span>
+                                </button>
                             </div>
                         </div>
                     </li>
