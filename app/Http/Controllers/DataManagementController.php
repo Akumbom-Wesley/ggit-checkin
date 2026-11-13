@@ -30,7 +30,7 @@ class DataManagementController extends Controller
             $rows = SpreadsheetReader::read($file->getRealPath(), $file->getClientOriginalExtension());
             $report = $importer->import(
                 $rows,
-                $request->input('category'),
+                $request->input('category') ?: 'registered',
                 $request->input('partner_name'),
                 $request->boolean('skip_duplicates'),
             );

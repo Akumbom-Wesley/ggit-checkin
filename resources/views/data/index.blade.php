@@ -102,7 +102,7 @@
 
         {{-- ===== 2. Import ===== --}}
         <section class="rounded-2xl bg-white p-5 ring-1 ring-gray-200 sm:p-6"
-                 x-data="{ category: @js(old('category', 'registered')) }">
+                    x-data="{ category: 'registered' }">
             <h2 class="text-base font-semibold">Import participants</h2>
             <p class="mt-1 text-sm text-gray-500">
                 Upload an Excel (.xlsx) or CSV file. The first row must be the column headers.
@@ -126,12 +126,12 @@
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div>
                         <label for="category" class="field-label">Category for this list</label>
-                        <select id="category" name="category" x-model="category" class="field">
+                                                <select id="category" name="category" x-model="category" class="field">
                             @foreach ($categories as $key => $label)
-                                <option value="{{ $key }}">{{ $label }}</option>
+                                <option value="{{ $key }}" @selected($key === 'registered')>{{ $label }}</option>
                             @endforeach
                         </select>
-                        <p class="mt-1 text-xs text-gray-500">Used when the file has no “Category” column.</p>
+                        <p class="mt-1 text-xs text-gray-500">Default: <strong>Registered</strong>. Change it only for partner or invited-guest lists.</p>
                     </div>
 
                     <div x-show="category === 'partner'" x-cloak>
