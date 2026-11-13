@@ -130,8 +130,57 @@
                 </template>
             </ul>
 
-            <p x-show="matches.length > results.length" x-cloak class="py-4 text-center text-sm text-gray-500"
-               x-text="`Showing ${results.length} of ${matches.length}. Type more to narrow it down.`"></p>
+                        {{-- ===== Pagination ===== --}}
+            <nav x-show="matches.length" x-cloak aria-label="Pagination"
+                 class="mt-4 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
+
+                <p class="text-sm text-gray-500">
+                    Showing <span class="font-medium tabular-nums text-ggit-ink" x-text="pageStart"></span>–<span class="font-medium tabular-nums text-ggit-ink" x-text="pageEnd"></span>
+                    of <span class="font-medium tabular-nums text-ggit-ink" x-text="matches.length"></span>
+                </p>
+
+                <div x-show="pageCount > 1" class="flex items-center gap-1">
+                    <button type="button" @click="goToPage(currentPage - 1)" :disabled="currentPage === 1"
+                            class="flex h-9 items-center gap-1 rounded-lg bg-white px-3 text-sm font-medium text-gray-700 ring-1 ring-gray-200 transition hover:ring-ggit-purple disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:ring-gray-200">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m15 19-7-7 7-7"/></svg>
+                        Prev
+                    </button>
+
+                    {{-- page numbers: tablet / desktop --}}
+                    <div class="hidden items-center gap-1 sm:flex">
+                        <template x-for="(n, idx) in pageNumbers()" :key="idx">
+                            <button type="button" x-text="n"
+                                    @click="n !== '…' && goToPage(n)" :disabled="n === '…'"
+                                    :aria-current="n === currentPage ? 'page' : null"
+                                    class="h-9 min-w-9 rounded-lg px-2 text-sm font-medium tabular-nums transition"
+                                    :class="n === currentPage
+                                        ? 'bg-ggit-purple text-white'
+                                        : (n === '…' ? 'cursor-default text-gray-400' : 'bg-white text-gray-700 ring-1 ring-gray-200 hover:ring-ggit-purple')"></button>
+                        </template>
+                    </div>
+
+                    {{-- compact counter: phones --}}
+                    <span class="px-3 text-sm font-medium tabular-nums text-gray-600 sm:hidden">
+                        <span x-text="currentPage"></span> / <span x-text="pageCount"></span>
+                    </span>
+
+                    <button type="button" @click="goToPage(currentPage + 1)" :disabled="currentPage === pageCount"
+                            class="flex h-9 items-center gap-1 rounded-lg bg-white px-3 text-sm font-medium text-gray-700 ring-1 ring-gray-200 transition hover:ring-ggit-purple disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:ring-gray-200">
+                        Next
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m9 5 7 7-7 7"/></svg>
+                    </button>
+                </div>
+
+                <label class="flex items-center gap-2 text-sm text-gray-500">
+                    Per page
+                    <select x-model.number="perPage"
+                            class="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm text-ggit-ink outline-none focus:border-ggit-purple focus:ring-2 focus:ring-ggit-purple/15">
+                        <template x-for="n in perPageOptions" :key="n">
+                            <option :value="n" x-text="n" :selected="n === perPage"></option>
+                        </template>
+                    </select>
+                </label>
+            </nav>
 
             {{-- no match → offer to add --}}
             <div x-show="!loading && q.trim() && !matches.length && people.length" x-cloak

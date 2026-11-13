@@ -9,7 +9,18 @@ export const CATEGORIES = {
     walkin: { label: 'Walk-in', badge: 'bg-emerald-100 text-emerald-800', bar: 'bg-emerald-500' },
 };
 
-const RENDER_LIMIT = 60;
+const PER_PAGE_OPTIONS = [25, 50, 100];
+const PER_PAGE_KEY = 'ggit-checkin-per-page';
+
+// Each device remembers its own page size.
+function savedPerPage() {
+    try {
+        const n = parseInt(localStorage.getItem(PER_PAGE_KEY), 10);
+        return PER_PAGE_OPTIONS.includes(n) ? n : 25;
+    } catch (e) {
+        return 25;
+    }
+}
 const CACHE_KEY = 'ggit-checkin-cache-v1';
 const IMPORTANT_NOTE = /(eat|food|allerg|chicken|meat|diet|vegetar|halal|volunteer|disab|wheelchair|medic|pregnan)/i;
 
@@ -64,6 +75,9 @@ export default function checkin(config = {}) {
         q: '',
         filter: 'all', // all | waiting | in
         active: 0,
+        page: 1,
+        perPage: savedPerPage(),
+        perPageOptions: PER_PAGE_OPTIONS,
         loading: true,
         online: true,
         lastSync: null,
@@ -95,8 +109,13 @@ export default function checkin(config = {}) {
                     this.focusSearch();
                 }
             });
-            this.$watch('q', () => (this.active = 0));
-            this.$watch('filter', () => (this.active = 0));
+                        this.$watch('q', () => { this.active = 0; this.page = 1; });
+            this.$watch('filter', () => { this.active = 0; this.page = 1; });
+            this.$watch('perPage', (value) => {
+                this.page = 1;
+                this.active = 0;
+                try { localStorage.setItem(PER_PAGE_KEY, value); } catch (e) { /* ignore */ }
+            });
         },
 
         // ---------- data ----------
@@ -209,7 +228,16 @@ export default function checkin(config = {}) {
         },
         get matches() { return this.search.list; },
         get fuzzy() { return this.search.fuzzy; },
-        get results() { return this.search.list.slice(0, RENDER_LIMIT); },
+        
+                // ---------- pagination ----------
+        get pageCount() { return Math.max(1, Math.ceil(this.matches.length / this.perPage)); },
+        get currentPage() { return Math.min(Math.max(1, this.page), this.pageCount); },
+        get pageStart() { return this.matches.length ? (this.currentPage - 1) * this.perPage + 1 : 0; },
+        get pageEnd() { return Math.min(this.currentPage * this.perPage, this.matches.length); },
+        get results() {
+            const from = (this.currentPage - 1) * this.perPage;
+            return this.matches.slice(from, from + this.perPage);
+        },
 
         runSearch() {
             const raw = this.q.trim();
@@ -346,6 +374,29 @@ export default function checkin(config = {}) {
             setTimeout(() => (p._confirmUndo = false), 3000);
         },
 
+                goToPage(n) {
+            const target = Math.min(Math.max(1, n), this.pageCount);
+            if (target === this.currentPage) return;
+            this.page = target;
+            this.active = 0;
+            this.$nextTick(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
+        },
+
+        // e.g. [1, '…', 4, 5, 6, '…', 12]
+        pageNumbers() {
+            const total = this.pageCount;
+            const current = this.currentPage;
+            if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+
+            const pages = [1];
+            const start = Math.max(2, current - 1);
+            const end = Math.min(total - 1, current + 1);
+            if (start > 2) pages.push('…');
+            for (let i = start; i <= end; i++) pages.push(i);
+            if (end < total - 1) pages.push('…');
+            pages.push(total);
+            return pages;
+        },
         
         // ---------- keyboard ----------
         move(d) {
