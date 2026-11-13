@@ -87,15 +87,20 @@
 
         {{-- ===== 1. Download ===== --}}
         <section class="rounded-2xl bg-white p-5 ring-1 ring-gray-200 sm:p-6">
-            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h2 class="text-base font-semibold">Attendance report</h2>
-                    <p class="mt-1 text-sm text-gray-500">Excel file with every participant, category, partner, phone, email and check-in time, plus a summary sheet.</p>
-                </div>
+            <h2 class="text-base font-semibold">Attendance report</h2>
+            <p class="mt-1 text-sm text-gray-500">
+                Everyone on the list with their type, check-in time and amount paid at the door, plus a summary.
+            </p>
+            <div class="mt-4 flex flex-col gap-3 sm:flex-row">
                 <a href="{{ route('export') }}"
-                   class="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-ggit-purple px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-ggit-purple-dark">
+                   class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg>
                     Download Excel
+                </a>
+                <a href="{{ route('export.pdf') }}"
+                   class="inline-flex items-center justify-center gap-2 rounded-xl bg-ggit-purple px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-ggit-purple-dark">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg>
+                    Download PDF
                 </a>
             </div>
         </section>
