@@ -6,6 +6,7 @@ use App\Http\Controllers\ExportController;
 use App\Http\Controllers\ParticipantController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SummaryController;
+use App\Http\Controllers\PaymentController;
 
 Route::get('/login', [AuthController::class, 'show'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:40,1');
@@ -15,6 +16,8 @@ Route::middleware('pin')->group(function () {
     Route::get('/', fn () => view('checkin'))->name('checkin');
     Route::get('/export', ExportController::class)->name('export');
     Route::get('/summary', SummaryController::class)->name('summary');
+    Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
+    Route::patch('/payments/{participant}', [PaymentController::class, 'update'])->name('payments.update');
 
     // Data & Reports page
     Route::prefix('data')->name('data.')->controller(DataManagementController::class)->group(function () {

@@ -4,12 +4,13 @@
 @php
     $barColours = [
         'registered' => 'bg-ggit-blue',
-        'speaker' => 'bg-rose-500',
-        'partner' => 'bg-ggit-purple',
-        'invited' => 'bg-amber-500',
-        'walkin' => 'bg-emerald-500',
+        'speaker'    => 'bg-rose-500',
+        'partner'    => 'bg-ggit-purple',
+        'invited'    => 'bg-amber-500',
+        'walkin'     => 'bg-emerald-500',
     ];
     $percent = fn ($part, $whole) => $whole ? (int) round($part / $whole * 100) : 0;
+    $maxTotal = max(1, (int) $byCategory->max('total'));
 @endphp
 
 @section('body')
@@ -20,7 +21,7 @@
 
     <x-app-header title="Summary" />
     <x-app-drawer />
-    
+
     <main class="mx-auto max-w-4xl space-y-6 px-4 pt-6">
         <div class="flex items-end justify-between gap-4">
             <div>
@@ -33,28 +34,74 @@
             </button>
         </div>
 
-        {{-- ===== Overall ===== --}}
+        {{-- ===== Arrivals + Money ===== --}}
+        <div class="grid gap-4 sm:grid-cols-2">
+            <section class="rounded-2xl bg-white p-5 ring-1 ring-gray-200 sm:p-6">
+                <h2 class="text-sm font-medium text-gray-500">Arrivals</h2>
+                <p class="mt-1 text-4xl font-semibold tabular-nums">
+                    {{ $checkedIn }}<span class="text-xl font-normal text-gray-400"> of {{ $total }}</span>
+                </p>
+                <div class="mt-4 h-3 overflow-hidden rounded-full bg-gray-100">
+                    <div class="h-full rounded-full bg-ggit-purple" style="width: {{ $percent($checkedIn, $total) }}%"></div>
+                </div>
+                <p class="mt-2 text-xs text-gray-500">
+                    {{ $percent($checkedIn, $total) }}% arrived · {{ $total - $checkedIn }} still expected
+                </p>
+            </section>
+
+            <section class="flex flex-col rounded-2xl bg-white p-5 ring-1 ring-gray-200 sm:p-6">
+                <h2 class="text-sm font-medium text-gray-500">Money collected today</h2>
+                <p class="mt-1 text-4xl font-semibold tabular-nums text-emerald-700">
+                    {{ number_format($collectedToday) }}<span class="text-xl font-normal text-gray-400"> {{ config('checkin.currency') }}</span>
+                </p>
+                <p class="mt-2 text-xs text-gray-500">
+                    {{ $paymentsToday }} {{ \Illuminate\Support\Str::plural('payment', $paymentsToday) }} at the door
+                </p>
+                <a href="{{ route('payments.index') }}"
+                   class="mt-auto inline-flex items-center gap-1 self-start pt-4 text-sm font-semibold text-ggit-purple hover:underline">
+                    See who paid
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m9 5 7 7-7 7"/></svg>
+                </a>
+            </section>
+        </div>
+
+        {{-- ===== Bar chart: who attended ===== --}}
         <section class="rounded-2xl bg-white p-5 ring-1 ring-gray-200 sm:p-6">
-            <h2 class="text-sm font-medium text-gray-500">Arrivals</h2>
-            <p class="mt-1 text-4xl font-semibold tabular-nums">
-                {{ $checkedIn }}<span class="text-xl font-normal text-gray-400"> of {{ $total }}</span>
-            </p>
-            <div class="mt-4 h-3 overflow-hidden rounded-full bg-gray-100">
-                <div class="h-full rounded-full bg-ggit-purple" style="width: {{ $percent($checkedIn, $total) }}%"></div>
+            <div class="flex flex-wrap items-end justify-between gap-2">
+                <div>
+                    <h2 class="text-base font-semibold">Who attended</h2>
+                    <p class="mt-0.5 text-xs text-gray-500">Checked in by participant type</p>
+                </div>
+                <div class="flex items-center gap-4 text-xs text-gray-500">
+                    <span class="flex items-center gap-1.5"><span class="h-3 w-3 rounded-sm bg-ggit-purple"></span>Checked in</span>
+                    <span class="flex items-center gap-1.5"><span class="h-3 w-3 rounded-sm bg-gray-200"></span>Expected</span>
+                </div>
             </div>
-            <div class="mt-3 grid grid-cols-3 gap-3 text-center">
-                <div class="rounded-xl bg-gray-50 p-3">
-                    <p class="text-xl font-semibold tabular-nums text-ggit-purple">{{ $percent($checkedIn, $total) }}%</p>
-                    <p class="text-xs text-gray-500">arrived</p>
-                </div>
-                <div class="rounded-xl bg-gray-50 p-3">
-                    <p class="text-xl font-semibold tabular-nums text-emerald-700">{{ $checkedIn }}</p>
-                    <p class="text-xs text-gray-500">checked in</p>
-                </div>
-                <div class="rounded-xl bg-gray-50 p-3">
-                    <p class="text-xl font-semibold tabular-nums text-gray-600">{{ $total - $checkedIn }}</p>
-                    <p class="text-xs text-gray-500">still expected</p>
-                </div>
+
+            <div class="mt-6 grid items-end gap-2 sm:gap-4" style="grid-template-columns: repeat({{ count($categories) }}, minmax(0, 1fr));">
+                @foreach ($categories as $key => $label)
+                    @php
+                        $row = $byCategory[$key] ?? null;
+                        $catTotal = (int) ($row->total ?? 0);
+                        $catIn = (int) ($row->checked_in ?? 0);
+                        $hTotal = (int) round($catTotal / $maxTotal * 100);
+                        $hIn = (int) round($catIn / $maxTotal * 100);
+                    @endphp
+                    <div class="flex flex-col items-center">
+                        <div class="relative h-48 w-full max-w-[4.5rem] pt-6">
+                            <div class="relative h-full w-full">
+                                {{-- expected --}}
+                                <div class="absolute inset-x-0 bottom-0 rounded-t-lg bg-gray-200" style="height: {{ $hTotal }}%"></div>
+                                {{-- checked in --}}
+                                <div class="absolute inset-x-0 bottom-0 rounded-t-lg {{ $barColours[$key] ?? 'bg-gray-500' }}" style="height: {{ $hIn }}%"></div>
+                                {{-- value --}}
+                                <span class="absolute inset-x-0 text-center text-sm font-semibold tabular-nums" style="bottom: calc({{ $hTotal }}% + 4px)">{{ $catIn }}</span>
+                            </div>
+                        </div>
+                        <p class="mt-2 text-center text-xs font-medium leading-tight text-gray-700">{{ $label }}</p>
+                        <p class="text-center text-[11px] text-gray-500">of {{ $catTotal }}</p>
+                    </div>
+                @endforeach
             </div>
         </section>
 

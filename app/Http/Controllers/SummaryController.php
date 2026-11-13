@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Participant;
 
-/** Summary page: arrivals overview, per category, per partner, latest arrivals. */
+/** Summary page: arrivals, attendance chart, money collected today, partners, latest arrivals. */
 class SummaryController extends Controller
 {
     public function __invoke()
@@ -28,13 +28,18 @@ class SummaryController extends Controller
             ->limit(10)
             ->get();
 
+        // Money collected at the door today
+        $paidToday = Participant::query()->where('amount', '>', 0)->whereDate('paid_at', today());
+
         return view('summary.index', [
-            'categories' => Participant::CATEGORIES,
-            'byCategory' => $byCategory,
-            'byPartner' => $byPartner,
+            'categories'     => Participant::CATEGORIES,
+            'byCategory'     => $byCategory,
+            'byPartner'      => $byPartner,
             'latestArrivals' => $latestArrivals,
-            'total' => (int) $byCategory->sum('total'),
-            'checkedIn' => (int) $byCategory->sum('checked_in'),
+            'total'          => (int) $byCategory->sum('total'),
+            'checkedIn'      => (int) $byCategory->sum('checked_in'),
+            'collectedToday' => (int) (clone $paidToday)->sum('amount'),
+            'paymentsToday'  => (clone $paidToday)->count(),
         ]);
     }
 }
