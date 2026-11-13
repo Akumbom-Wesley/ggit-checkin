@@ -86,6 +86,21 @@
                           class="field resize-none"></textarea>
             </div>
 
+            {{-- amount paid --}}
+            <div>
+                <label for="add-amount" class="field-label">Amount paid</label>
+                <div class="relative">
+                    <input id="add-amount" x-model="add.form.amount" @input="add.amountTouched = true; delete add.errors.amount"
+                           type="number" inputmode="numeric" min="0" step="500"
+                           class="field pr-16" :class="add.errors.amount && 'field-invalid'">
+                    <span class="pointer-events-none absolute right-4 top-1/2 mt-0.5 -translate-y-1/2 text-sm text-gray-400" x-text="pricing.currency"></span>
+                </div>
+                <p x-show="add.errors.amount" class="field-msg" x-text="add.errors.amount"></p>
+                <p x-show="!add.errors.amount" class="mt-1 text-xs text-gray-500">
+                    Ticket price: <span x-text="money(pricing.ticket)"></span>. Use 0 for free entry (speakers, invited guests, already paid).
+                </p>
+            </div>
+
             {{-- check in now --}}
             <label class="flex cursor-pointer items-center gap-3 rounded-xl bg-gray-50 px-4 py-3">
                 <input type="checkbox" x-model="add.form.check_in" class="h-5 w-5 accent-ggit-purple">

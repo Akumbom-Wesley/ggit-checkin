@@ -4,6 +4,7 @@
 @php
     $barColours = [
         'registered' => 'bg-ggit-blue',
+        'speaker' => 'bg-rose-500',
         'partner' => 'bg-ggit-purple',
         'invited' => 'bg-amber-500',
         'walkin' => 'bg-emerald-500',

@@ -6,8 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class Participant extends Model
 {
+    /** Order here = order on screen, in reports and in charts. */
     public const CATEGORIES = [
         'registered' => 'Registered',
+        'speaker'    => 'Speaker',
         'partner'    => 'Partner / Sponsor',
         'invited'    => 'Invited guest',
         'walkin'     => 'Walk-in',
@@ -15,11 +17,14 @@ class Participant extends Model
 
     protected $fillable = [
         'full_name', 'email', 'phone', 'category', 'partner_name',
-        'notes', 'paid', 'payment_proof', 'registered_at', 'checked_in_at',
+        'notes', 'paid', 'payment_proof', 'amount', 'paid_at',
+        'registered_at', 'checked_in_at',
     ];
 
     protected $casts = [
         'paid'          => 'boolean',
+        'amount'        => 'integer',
+        'paid_at'       => 'datetime',
         'registered_at' => 'datetime',
         'checked_in_at' => 'datetime',
     ];
@@ -41,6 +46,11 @@ class Participant extends Model
         return $digits === '' ? null : substr($digits, -9);
     }
 
+    public static function money(int $amount): string
+    {
+        return number_format($amount, 0, '.', ',').' '.config('checkin.currency');
+    }
+
     /** Compact shape sent to the check-in screen. */
     public function toClient(): array
     {
@@ -52,6 +62,7 @@ class Participant extends Model
             'cat'     => $this->category,
             'partner' => $this->partner_name,
             'notes'   => $this->notes,
+            'amount'  => (int) $this->amount,
             'in'      => $this->checked_in_at?->toIso8601String(),
         ];
     }

@@ -2,7 +2,14 @@
 @section('title', 'Check-in')
 
 @section('body')
-<div x-data="checkin(@js(['tz' => config('app.timezone'), 'syncMs' => config('checkin.sync_interval')]))"
+<div x-data="checkin(@js([
+        'tz' => config('app.timezone'),
+        'syncMs' => config('checkin.sync_interval'),
+        'ticketPrice' => config('checkin.ticket_price'),
+        'currency' => config('checkin.currency'),
+        'paying' => config('checkin.paying_categories'),
+     ]))"
+     
      x-effect="document.body.classList.toggle('overflow-hidden', menuOpen || add.open)"
      class="min-h-dvh pb-24 lg:pb-0">
 

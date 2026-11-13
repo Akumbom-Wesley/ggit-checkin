@@ -90,6 +90,7 @@ class ParticipantImporter
                 $partner = $value('partner_name') ?: ($category === 'partner' ? ($defaultPartner ?: null) : null);
                 $notes = $value('notes');
 
+                // Imported people paid before the event: marked paid, amount not tracked.
                 Participant::create([
                     'full_name' => $name,
                     'email' => $email,
@@ -99,6 +100,8 @@ class ParticipantImporter
                     'notes' => in_array(Str::lower($notes), self::EMPTY_ANSWERS, true) ? null : $notes,
                     'payment_proof' => $value('payment_proof') ?: null,
                     'paid' => true,
+                    'amount' => 0,
+                    'paid_at' => null,
                     'registered_at' => $this->parseDate($value('registered_at')),
                 ]);
 
@@ -165,6 +168,7 @@ class ParticipantImporter
         return match (true) {
             $value === '' => $default,
             str_contains($value, 'partner'), str_contains($value, 'sponsor') => 'partner',
+            str_contains($value, 'speak'), str_contains($value, 'panel'), str_contains($value, 'moderat'), str_contains($value, 'facilitat') => 'speaker',
             str_contains($value, 'invit'), str_contains($value, 'guest'), str_contains($value, 'vip') => 'invited',
             str_contains($value, 'walk') => 'walkin',
             str_contains($value, 'regist') => 'registered',

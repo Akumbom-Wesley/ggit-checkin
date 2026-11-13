@@ -3,15 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\Participant;
+use App\Support\DatasetVersion;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
-use App\Support\DatasetVersion;
 
 class ParticipantController extends Controller
 {
-        /** Full list, loaded once per device. Search then runs in the browser with no server round-trips. */
+    /** Full list, loaded once per device. Search then runs in the browser with no server round-trips. */
     public function index(): JsonResponse
     {
         return response()->json([
@@ -71,11 +71,13 @@ class ParticipantController extends Controller
             'category'     => ['required', Rule::in(array_keys(Participant::CATEGORIES))],
             'partner_name' => ['nullable', 'required_if:category,partner', 'string', 'max:120'],
             'notes'        => ['nullable', 'string', 'max:500'],
+            'amount'       => ['nullable', 'integer', 'min:0', 'max:10000000'],
             'check_in'     => ['boolean'],
             'force'        => ['boolean'],
         ], [
             'phone.regex'              => 'Enter a valid phone number.',
             'partner_name.required_if' => 'Which partner or sponsor sent them?',
+            'amount.integer'           => 'Enter the amount as a whole number.',
         ]);
 
         $data['full_name'] = preg_replace('/\s+/', ' ', trim($data['full_name']));
@@ -96,6 +98,11 @@ class ParticipantController extends Controller
             }
         }
 
+        // Amount typed by staff, otherwise the ticket price for paying categories (walk-ins), otherwise 0.
+        $amount = $request->filled('amount')
+            ? (int) $request->input('amount')
+            : (in_array($data['category'], config('checkin.paying_categories'), true) ? (int) config('checkin.ticket_price') : 0);
+
         $participant = Participant::create([
             'full_name'     => $data['full_name'],
             'phone'         => trim($data['phone']),
@@ -104,6 +111,8 @@ class ParticipantController extends Controller
             'partner_name'  => $data['category'] === 'partner' ? trim($data['partner_name']) : null,
             'notes'         => $data['notes'] ?? null,
             'paid'          => true,
+            'amount'        => $amount,
+            'paid_at'       => $amount > 0 ? now() : null,
             'registered_at' => now(),
             'checked_in_at' => $request->boolean('check_in', true) ? now() : null,
         ]);

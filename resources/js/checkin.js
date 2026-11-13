@@ -4,6 +4,7 @@
 
 export const CATEGORIES = {
     registered: { label: 'Registered', badge: 'bg-ggit-blue/10 text-ggit-blue', bar: 'bg-ggit-blue' },
+    speaker: { label: 'Speaker', badge: 'bg-rose-100 text-rose-700', bar: 'bg-rose-500' },
     partner: { label: 'Partner / Sponsor', badge: 'bg-ggit-purple/10 text-ggit-purple', bar: 'bg-ggit-purple' },
     invited: { label: 'Invited guest', badge: 'bg-amber-100 text-amber-800', bar: 'bg-amber-500' },
     walkin: { label: 'Walk-in', badge: 'bg-emerald-100 text-emerald-800', bar: 'bg-emerald-500' },
@@ -91,6 +92,11 @@ export default function checkin(config = {}) {
         cats: CATEGORIES,
         tz: config.tz || 'Africa/Douala',
         syncMs: config.syncMs || 3000,
+        pricing: {
+            ticket: config.ticketPrice ?? 0,
+            currency: config.currency || 'FCFA',
+            paying: config.paying || ['walkin'],
+        },
 
         async init() {
             // Show the last known list instantly (if any), then refresh from the server.
@@ -425,6 +431,10 @@ export default function checkin(config = {}) {
         time(iso) {
             if (!iso) return '';
             return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: this.tz });
+        },
+
+        money(n) {
+            return Number(n || 0).toLocaleString('en-US') + ' ' + this.pricing.currency;
         },
 
         initials(name) {

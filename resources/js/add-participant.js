@@ -1,18 +1,9 @@
-// "Add participant" form: walk-ins, partner/sponsor guests, invited guests.
-// Mixed into the check-in component (see app.js), so it can use this.people, this.apply(), this.toast()…
-
-const blankForm = (sticky = {}) => ({
-    category: sticky.category || 'walkin',
-    partner_name: sticky.partner_name || '',
-    full_name: '',
-    phone: '',
-    email: '',
-    notes: '',
-    check_in: true,
-});
+// "Add participant" form: walk-ins, speakers, partner/sponsor guests, invited guests.
+// Mixed into the check-in component (see app.js), so it can use this.people, this.apply(), this.toast(), this.pricing…
 
 export const ADD_CATEGORIES = [
     { key: 'walkin', label: 'Walk-in' },
+    { key: 'speaker', label: 'Speaker' },
     { key: 'partner', label: 'Partner / Sponsor' },
     { key: 'invited', label: 'Invited guest' },
     { key: 'registered', label: 'Registered (missing)' },
@@ -21,11 +12,30 @@ export const ADD_CATEGORIES = [
 export default function addParticipant() {
     return {
         addCats: ADD_CATEGORIES,
-        add: { open: false, saving: false, form: blankForm(), errors: {}, matches: [] },
+        add: { open: false, saving: false, form: {}, errors: {}, matches: [], amountTouched: false },
         addSticky: {}, // remembers category + partner between adds (partners often send groups)
 
+        /** Ticket price for paying categories (walk-ins), 0 for everyone else. */
+        defaultAmount(category) {
+            return this.pricing.paying.includes(category) ? this.pricing.ticket : 0;
+        },
+
+        blankForm() {
+            const category = this.addSticky.category || 'walkin';
+            return {
+                category,
+                partner_name: this.addSticky.partner_name || '',
+                full_name: '',
+                phone: '',
+                email: '',
+                notes: '',
+                amount: this.defaultAmount(category),
+                check_in: true,
+            };
+        },
+
         openAdd(prefill = '') {
-            const form = blankForm(this.addSticky);
+            const form = this.blankForm();
             const text = typeof prefill === 'string' ? prefill.trim() : '';
             if (/@/.test(text)) form.email = text;
             else if (/^[\d\s+()\-]{3,}$/.test(text)) form.phone = text;
@@ -35,7 +45,7 @@ export default function addParticipant() {
             if (form.category === 'partner' && !form.partner_name) focus = 'add-partner';
             else if (form.full_name) focus = 'add-phone';
 
-            this.add = { open: true, saving: false, form, errors: {}, matches: [] };
+            this.add = { open: true, saving: false, form, errors: {}, matches: [], amountTouched: false };
             this.$nextTick(() => document.getElementById(focus)?.focus());
         },
 
@@ -47,6 +57,8 @@ export default function addParticipant() {
         setCategory(key) {
             this.add.form.category = key;
             delete this.add.errors.partner_name;
+            // Follow the category's price unless staff typed their own amount.
+            if (!this.add.amountTouched) this.add.form.amount = this.defaultAmount(key);
             if (key === 'partner') this.$nextTick(() => document.getElementById('add-partner')?.focus());
         },
 
@@ -65,6 +77,9 @@ export default function addParticipant() {
             if (!f.email.trim()) e.email = 'Email is required.';
             else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email.trim())) e.email = 'Enter a valid email address.';
             if (f.category === 'partner' && !f.partner_name.trim()) e.partner_name = 'Which partner or sponsor sent them?';
+            if (f.amount !== '' && f.amount !== null && (!Number.isInteger(Number(f.amount)) || Number(f.amount) < 0)) {
+                e.amount = 'Enter the amount as a whole number (0 if free).';
+            }
             this.add.errors = e;
             return Object.keys(e).length === 0;
         },
@@ -74,8 +89,10 @@ export default function addParticipant() {
             this.add.saving = true;
             this.add.matches = [];
             const f = this.add.form;
+            const payload = { ...f, amount: f.amount === '' || f.amount === null ? null : Number(f.amount), force };
+
             try {
-                const r = await this.request('POST', '/api/participants', { ...f, force });
+                const r = await this.request('POST', '/api/participants', payload);
 
                 if (r.status === 201) {
                     const p = r.data.participant;
@@ -84,7 +101,8 @@ export default function addParticipant() {
                     this.add.open = false;
                     this.q = '';
                     this.saveCache();
-                    this.toast('ok', p.in ? `${p.name} added and checked in` : `${p.name} added`, p.in ? p.id : null);
+                    const paid = p.amount > 0 ? ` · ${this.money(p.amount)}` : '';
+                    this.toast('ok', (p.in ? `${p.name} added and checked in` : `${p.name} added`) + paid, p.in ? p.id : null);
                     this.focusSearch();
                 } else if (r.status === 409 && r.data.message === 'possible_duplicate') {
                     this.apply(r.data.matches); // get their latest check-in status
